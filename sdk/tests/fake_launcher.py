@@ -17,7 +17,9 @@ def serve():
             f.write(b'{"t":"quiet"}\n')
             f.write(json.dumps({"t": "list", "achievements": [
                 {"id": 10, "trigger": "0xH0019=2"},
-                {"id": 11, "trigger": "0xH0019=9"}], "unlocked": [11]}).encode() + b"\n")
+                {"id": 11, "trigger": "0xH0019=9"}], "unlocked": [11],
+                "leaderboards": [{"id": 5, "start": "0xH0020=1", "cancel": "0xH0020=2", "submit": "0xH0020=3", "value": "0xH0021"}],
+                "rich_presence": "Display:\nWorld @Num(0xH0022)\n\nFormat:Num\nFormatType=VALUE\n"}).encode() + b"\n")
             f.flush()
         if m["t"] == "event":
             f.write(b'{"t":"peek","address":25,"size":4,"seq":7}\n'); f.flush()
@@ -34,5 +36,10 @@ ok = (types[:2] == ["hello", "native_list"] and got[1]["achievements"][0]["title
       and "save_loaded" in types and any(m["t"] == "native" and m["id"] == 42 for m in got)
       and any(m["t"] == "event" and m["name"] == "beat_bowser" for m in got)
       and any(m["t"] == "mem" and m["seq"] == 7 and m["hex"] == "02000000" for m in got)
-      and "quiet=1" in out.stdout)
+      and "quiet=1" in out.stdout
+      and next(m for m in got if m["t"] == "list_ok").get("boards") == 1 and next(m for m in got if m["t"] == "list_ok").get("presence") is True
+      and any(m["t"] == "lboard" and m["id"] == 9 and m["value"] == 1234 for m in got)
+      and any(m["t"] == "lboard_start" and m["id"] == 5 for m in got)
+      and any(m["t"] == "lboard" and m["id"] == 5 and m["value"] == 77 for m in got)
+      and any(m["t"] == "presence" and m["text"] == "World 3" for m in got))
 print("PASS" if ok else "FAIL"); sys.exit(0 if ok else 1)

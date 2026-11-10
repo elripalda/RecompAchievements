@@ -50,6 +50,18 @@ if (boss_defeated) rl_ach_event("beat_final_boss");
 
 Use short, stable names. Firing an event twice is fine; an achievement unlocks once.
 
+## Leaderboards and "now playing"
+
+Lists can have their own leaderboards (fastest boss, most coins) and a rich presence line ("World 3-2, 47 stars") that shows on the player's profile.
+
+- **Memory lists** do both by themselves: the list holds the rules (see [SPEC.md](SPEC.md)).
+- **Ports** send them from their own code:
+
+```c
+rl_ach_lboard(1, frames_taken);          // leaderboard 1 from the list, in its format
+rl_ach_presence("World 3-2, 47 stars");  // sent only when it changes
+```
+
 ## Keeping it fair
 
 These make an unlock count as Casual instead of Ranked. Call them where they apply:

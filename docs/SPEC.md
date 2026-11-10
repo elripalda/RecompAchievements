@@ -33,14 +33,18 @@ update. You don't have to write it alone: send us your recomp and we'll work on 
 | `trigger` | An rcheevos condition string (memory lists) |
 | `event` | The event name the port fires (code events) |
 | `native` | The console's own achievement id (native lists, when titles are overridden) |
+| `bonus` | `true`: counts for points, but not for Beaten or Mastered (extra challenges) |
+| `leaderboards` | Optional. Each: `id`, `title`, `description`?, `format` (`score`, `time`, `frames`, `millisecs`, `seconds`, `minutes` or `value`), `lower_is_better`? (times default to lower), and for memory lists `mem` (rcheevos `STA:..::CAN:..::SUB:..::VAL:..`) or `start`, `cancel`, `submit`, `value`. Events lists submit from the port's code with `rl_ach_lboard` |
+| `rich_presence` | Optional, memory lists: an rcheevos rich presence script, the "Playing: World 3-2" line on profiles. Ports set it from their own code with `rl_ach_presence` |
 
 Native lists only need `format`, `game`, `source` and `console`. RecompLauncher reads the names,
 descriptions and gamerscore from the player's own copy of the game, and leaves out achievements that
 need online play so Mastered can be reached offline. A runtime that already reads them can send them
 with `native_list` too.
 
-Every achievement shows the same star icon in version 1. Unlocking every achievement in
-a game makes it Mastered.
+Every achievement shows the same star icon in version 1. A game is **Beaten** when every
+`progression` achievement and at least one `win` are unlocked, and **Mastered** when every achievement
+except `bonus` ones is. `missable` ones are flagged to players so they don't play past them.
 
 ## The channel
 
@@ -56,21 +60,25 @@ From the recomp:
 | --- | --- | --- |
 | `hello` | `sdk`, `console`, `memory`, `game`?, `version`? | Once, on connect |
 | `native_list` | `achievements` [{`id`, `title`, `description`, `gamerscore`}] | Right after `hello`, from runtimes that know the game's native achievements (`rl_ach_native_define`) |
-| `list_ok` | `rules` | After loading a list |
+| `list_ok` | `rules`, `boards`, `presence` | After loading a list: rules and leaderboards running, and whether a rich presence script is |
 | `unlock` | `id`, `frame` | A memory rule fired |
 | `progress` | `id`, `value`, `target` | A measured rule moved |
 | `native` | `id`, `frame`?, `earlier`? | The game unlocked a native achievement (`earlier`: it had it before connecting) |
 | `event` | `name`, `frame` | The port fired a code event |
 | `save_loaded` | `frame` | A save was loaded |
 | `casual` | `reason` | Unlocks from now can't be Ranked |
-| `broken` | `id`, `why`? | A rule didn't parse or reads memory the console doesn't have |
+| `broken` | `id` or `board`, `why`? | A rule or leaderboard didn't parse or reads memory the console doesn't have |
 | `mem` | `seq`, `hex` | Answer to `peek` |
+| `lboard_start` | `id`, `frame` | A memory leaderboard started (an attempt is on) |
+| `lboard_cancel` | `id`, `frame` | The attempt ended without a result |
+| `lboard` | `id`, `value`, `frame` | A leaderboard result: a score, or a time in the board's format |
+| `presence` | `text` | What the player is doing now. Sent when it changes, at most about every 5 seconds |
 
 From the launcher:
 
 | `t` | Fields | Meaning |
 | --- | --- | --- |
-| `list` | `achievements`, `unlocked`? | The memory rules to check, minus the ones already unlocked |
+| `list` | `achievements`, `unlocked`?, `leaderboards`?, `rich_presence`? | The memory rules to check (minus the ones already unlocked), the list's leaderboards and its rich presence script |
 | `quiet` | | The launcher shows the toast; the runtime hides its own. Always sent while achievements are on |
 | `peek` | `address`, `size` (max 256), `seq` | Dev tools: read memory for the memory viewer |
 

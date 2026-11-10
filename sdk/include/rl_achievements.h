@@ -10,6 +10,8 @@
  *   rl_ach_native(id);                    // from the runtime's own unlock hook (Xbox 360)
  *   rl_ach_event("beat_final_boss");      // from the port's code (decomp ports)
  *   rl_ach_save_loaded();                 // whenever a save is loaded
+ *   rl_ach_lboard(1, score);              // a leaderboard entry from the port's code
+ *   rl_ach_presence("World 3-2");          // what the player is doing
  */
 #ifndef RL_ACHIEVEMENTS_H
 #define RL_ACHIEVEMENTS_H
@@ -54,6 +56,15 @@ void rl_ach_native_earlier(uint32_t id);
 
 /* A code event the port's developer fired. The launcher maps names to achievements. */
 void rl_ach_event(const char* name);
+
+/* A leaderboard entry from the port's own code (decomps): a score, a time in frames or
+ * milliseconds, as the list's leaderboard says. Memory lists' leaderboards submit themselves. */
+void rl_ach_lboard(uint32_t id, int32_t value);
+
+/* What the player is doing, in a few words ("World 3-2, 47 stars"). Memory lists with a
+ * rich_presence script set it themselves; ports can set it from their own code. Sent only
+ * when it changes. */
+void rl_ach_presence(const char* text);
 
 /* A save was loaded. Ranked rules use it (native unlocks right after a load). */
 void rl_ach_save_loaded(void);

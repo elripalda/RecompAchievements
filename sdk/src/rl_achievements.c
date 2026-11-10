@@ -42,6 +42,10 @@ static struct {
   rc_runtime_t runtime;
   int runtime_ready;
   int rules;            /* memory rules loaded */
+  int boards;           /* leaderboards loaded */
+  int has_rp;           /* a rich presence script is loaded */
+  char presence[256];   /* the last presence text sent */
+  uint64_t presence_at; /* frame it was last checked */
   rl_ach_read_fn read;
   void* read_ud;
   uint64_t frame;
@@ -189,6 +193,21 @@ static void on_event(const rc_runtime_event_t* e) {
       cJSON_AddNumberToObject(o, "target", target);
       send_obj(o);
     }
+  } else if (e->type == RC_RUNTIME_EVENT_LBOARD_STARTED || e->type == RC_RUNTIME_EVENT_LBOARD_CANCELED) {
+    cJSON* o = msg(e->type == RC_RUNTIME_EVENT_LBOARD_STARTED ? "lboard_start" : "lboard_cancel");
+    cJSON_AddNumberToObject(o, "id", e->id);
+    cJSON_AddNumberToObject(o, "frame", (double)g.frame);
+    send_obj(o);
+  } else if (e->type == RC_RUNTIME_EVENT_LBOARD_TRIGGERED) {
+    cJSON* o = msg("lboard");
+    cJSON_AddNumberToObject(o, "id", e->id);
+    cJSON_AddNumberToObject(o, "value", e->value);
+    cJSON_AddNumberToObject(o, "frame", (double)g.frame);
+    send_obj(o);
+  } else if (e->type == RC_RUNTIME_EVENT_LBOARD_DISABLED) {
+    cJSON* o = msg("broken");
+    cJSON_AddNumberToObject(o, "board", e->id);
+    send_obj(o);
   } else if (e->type == RC_RUNTIME_EVENT_ACHIEVEMENT_DISABLED) {
     /* An address the console doesn't have: the rule is broken for this build. */
     cJSON* o = msg("broken");
@@ -202,6 +221,9 @@ static void runtime_reset(void) {
   rc_runtime_init(&g.runtime);
   g.runtime_ready = 1;
   g.rules = 0;
+  g.boards = 0;
+  g.has_rp = 0;
+  g.presence[0] = 0;
 }
 
 /* {"achievements":[{"id":1,"trigger":"0xH0010=7"}, ...]} -- entries without a
@@ -229,6 +251,44 @@ static int load_list(const cJSON* root) {
       send_obj(o);
     }
   }
+  /* Leaderboards: {"id", "mem"} (rcheevos' STA:..::CAN:..::SUB:..::VAL:..) or the four parts on their own. */
+  cJSON_ArrayForEach(a, cJSON_GetObjectItemCaseSensitive(root, "leaderboards")) {
+    const cJSON* id = cJSON_GetObjectItemCaseSensitive(a, "id");
+    const cJSON* mem = cJSON_GetObjectItemCaseSensitive(a, "mem");
+    const cJSON* sta = cJSON_GetObjectItemCaseSensitive(a, "start");
+    const cJSON* can = cJSON_GetObjectItemCaseSensitive(a, "cancel");
+    const cJSON* sub = cJSON_GetObjectItemCaseSensitive(a, "submit");
+    const cJSON* val = cJSON_GetObjectItemCaseSensitive(a, "value");
+    char* built = NULL;
+    const char* m = NULL;
+    if (!cJSON_IsNumber(id)) continue;
+    if (cJSON_IsString(mem) && mem->valuestring[0]) m = mem->valuestring;
+    else if (cJSON_IsString(sta) && cJSON_IsString(can) && cJSON_IsString(sub) && cJSON_IsString(val)) {
+      size_t n = strlen(sta->valuestring) + strlen(can->valuestring) + strlen(sub->valuestring) + strlen(val->valuestring) + 32;
+      built = (char*)malloc(n);
+      if (built) { snprintf(built, n, "STA:%s::CAN:%s::SUB:%s::VAL:%s", sta->valuestring, can->valuestring, sub->valuestring, val->valuestring); m = built; }
+    }
+    if (!m) continue; /* an events leaderboard: the port submits it with rl_ach_lboard */
+    if (rc_runtime_activate_lboard(&g.runtime, (uint32_t)id->valuedouble, m, NULL, 0) == RC_OK) g.boards++;
+    else {
+      cJSON* o = msg("broken");
+      cJSON_AddNumberToObject(o, "board", id->valuedouble);
+      cJSON_AddStringToObject(o, "why", "leaderboard didn't parse");
+      send_obj(o);
+    }
+    free(built);
+  }
+  {
+    const cJSON* rp = cJSON_GetObjectItemCaseSensitive(root, "rich_presence");
+    if (cJSON_IsString(rp) && rp->valuestring[0]) {
+      if (rc_runtime_activate_richpresence(&g.runtime, rp->valuestring, NULL, 0) == RC_OK) g.has_rp = 1;
+      else {
+        cJSON* o = msg("broken");
+        cJSON_AddStringToObject(o, "why", "rich presence didn't parse");
+        send_obj(o);
+      }
+    }
+  }
   return g.rules;
 }
 
@@ -244,6 +304,8 @@ static void handle_line(const char* line) {
       int n = load_list(m);
       cJSON* o = msg("list_ok");
       cJSON_AddNumberToObject(o, "rules", n);
+      cJSON_AddNumberToObject(o, "boards", g.boards);
+      cJSON_AddBoolToObject(o, "presence", g.has_rp);
       send_obj(o);
     } else if (strcmp(t->valuestring, "quiet") == 0) {
       g.quiet = 1;
@@ -345,7 +407,34 @@ void rl_ach_frame(void) {
   g.frame++;
   pump();
   send_natives();
-  if (g.rules > 0 && g.read) rc_runtime_do_frame(&g.runtime, on_event, peek, NULL, NULL);
+  if ((g.rules > 0 || g.boards > 0 || g.has_rp) && g.read) rc_runtime_do_frame(&g.runtime, on_event, peek, NULL, NULL);
+  /* Rich presence: checked about every 5 seconds (300 frames), sent only when it changes. */
+  if (g.has_rp && g.read && g.frame - g.presence_at >= 300) {
+    char buf[256];
+    g.presence_at = g.frame;
+    if (rc_runtime_get_richpresence(&g.runtime, buf, sizeof buf, peek, NULL, NULL) > 0) rl_ach_presence(buf);
+  }
+}
+
+void rl_ach_lboard(uint32_t id, int32_t value) {
+  cJSON* o;
+  if (!g.ready) return;
+  o = msg("lboard");
+  cJSON_AddNumberToObject(o, "id", id);
+  cJSON_AddNumberToObject(o, "value", value);
+  cJSON_AddNumberToObject(o, "frame", (double)g.frame);
+  send_obj(o);
+}
+
+void rl_ach_presence(const char* text) {
+  cJSON* o;
+  if (!g.ready || !text) return;
+  if (strncmp(text, g.presence, sizeof g.presence - 1) == 0) return;
+  strncpy(g.presence, text, sizeof g.presence - 1);
+  g.presence[sizeof g.presence - 1] = 0;
+  o = msg("presence");
+  cJSON_AddStringToObject(o, "text", g.presence);
+  send_obj(o);
 }
 
 void rl_ach_native(uint32_t id) {

@@ -18,7 +18,11 @@ The recomp never talks to accounts or servers. It sends small messages to Recomp
 
 **Ranked and Casual.** An unlock counts on the leaderboards (Ranked) when it happens live, during a session the launcher saw running, on the player's own save. Unlocks from a copied save, a burst of unlocks right after a save loads, cheats or save states are kept but count as Casual. Memory rules can't fire just from loading a finished save: each rule has to be false for a frame before it can fire.
 
-**Mastered.** Unlock every achievement in a game and it's Mastered, with its own badge on the player's profile. Achievements that need online play are left out of a list so Mastered can always be reached offline.
+**Beaten and Mastered.** Finish the story and the game is Beaten. Unlock every achievement and it's Mastered. Both go on the player's profile. Achievements that need online play are left out of a list so Mastered can always be reached offline, and bonus achievements count for points but not for either.
+
+**Leaderboards and rich presence.** A list can carry its own leaderboards (best times, high scores) and a "now playing" line for profiles.
+
+**Rarity.** Every achievement shows how many players have it, and a second leaderboard weights points by rarity.
 
 **Points.** Every achievement is worth 5, 10, 25 or 50 points. Native Xbox 360 gamerscore is converted to the same scale (up to 10 G is 5, up to 30 G is 10, up to 75 G is 25, more is 50), so totals compare across games.
 
@@ -37,6 +41,8 @@ rl_ach_native(id);                             // Xbox 360: from the runtime's u
 rl_ach_event("beat_final_boss");               // decomps: from your own code
 rl_ach_save_loaded();                          // whenever a save is loaded
 rl_ach_casual("cheats");                       // a cheat menu or save state was used
+rl_ach_lboard(1, frames);                      // a leaderboard result from your own code
+rl_ach_presence("World 3-2");                  // what the player is doing
 ```
 
 Step by step for each kind of recomp: [docs/adding-it.md](docs/adding-it.md)
