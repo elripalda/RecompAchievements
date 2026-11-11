@@ -24,7 +24,7 @@ update. You don't have to write it alone: send us your recomp and we'll work on 
 | Field | Meaning |
 | --- | --- |
 | `source` | `memory` (rules on console memory), `native` (the game's own achievements, Xbox 360), `events` (the port's code fires them) |
-| `console` | `n64`, `snes`, `gb`, `gba`, `psx`, `ps2`, `xbox`, `x360` |
+| `console` | `n64`, `snes`, `gb`, `gba`, `psx`, `ps2`, `dc`, `xbox`, `x360` (`dc`: Dreamcast, events lists for now) |
 | `copies` | The game copies the rules were checked on, as Easy Setup knows them (`sha1:` or a disc serial). Checked at setup only, not at every start |
 | `versions` | Recomp versions the rules were checked on: `>=1.4.0`, `1.4.x`, `1.4.0, 1.4.2` or `>=1.2 <2.0`. On any other version the launcher sends no list that session and the Achievements tab says why |
 | `voids` | Boot profile setting keys that make unlocks Casual while on |

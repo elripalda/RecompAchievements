@@ -32,7 +32,7 @@ typedef uint32_t (*rl_ach_read_fn)(uint32_t address, uint8_t* buffer, uint32_t n
 /* Optional, before rl_ach_init: the recomp's catalog id and its version. */
 void rl_ach_set_info(const char* game_id, const char* version);
 
-/* console: "n64", "snes", "gb", "gba", "psx", "ps2", "xbox", "x360", or "" for none.
+/* console: "n64", "snes", "gb", "gba", "psx", "ps2", "dc", "xbox", "x360", or "" for none.
  * read: NULL when the recomp has no console memory (native or code events only).
  * Returns 1 when connected to RecompLauncher, 0 otherwise. */
 int rl_ach_init(const char* console, rl_ach_read_fn read, void* ud);
