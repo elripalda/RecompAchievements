@@ -3,7 +3,9 @@
 ## The list file
 
 One JSON per recomp. RecompLauncher hosts it, so a fixed rule reaches players without a recomp
-update. You don't have to write it alone: send us your recomp and we'll work on it with you.
+update. Once your recomp is claimed in the developer hub (https://recompstore.com/hub), you can write
+and update its list yourself under PC recomps, Achievements: every save is checked against this format.
+You don't have to write it alone: send us your recomp and we'll work on it with you.
 
 ```json
 {
@@ -23,8 +25,8 @@ update. You don't have to write it alone: send us your recomp and we'll work on 
 
 | Field | Meaning |
 | --- | --- |
-| `source` | `memory` (rules on console memory), `native` (the game's own achievements, Xbox 360), `events` (the port's code fires them) |
-| `console` | `n64`, `snes`, `gb`, `gba`, `psx`, `ps2`, `dc`, `xbox`, `x360` (`dc`: Dreamcast, events lists for now) |
+| `source` | `memory` (rules on console memory), `native` (the game's own achievements or trophies: Xbox 360, PS3), `events` (the port's code fires them) |
+| `console` | `n64`, `snes`, `gb`, `gba`, `psx`, `ps2`, `ps3`, `dc`, `xbox`, `x360` (`dc`: Dreamcast, events lists for now; `ps3`: native and events lists) |
 | `copies` | The game copies the rules were checked on, as Easy Setup knows them (`sha1:` or a disc serial). Checked at setup only, not at every start |
 | `versions` | Recomp versions the rules were checked on: `>=1.4.0`, `1.4.x`, `1.4.0, 1.4.2` or `>=1.2 <2.0`. On any other version the launcher sends no list that session and the Achievements tab says why |
 | `voids` | Boot profile setting keys that make unlocks Casual while on |
@@ -37,7 +39,11 @@ update. You don't have to write it alone: send us your recomp and we'll work on 
 | `leaderboards` | Optional. Each: `id`, `title`, `description`?, `format` (`score`, `time`, `frames`, `millisecs`, `seconds`, `minutes` or `value`), `lower_is_better`? (times default to lower), and for memory lists `mem` (rcheevos `STA:..::CAN:..::SUB:..::VAL:..`) or `start`, `cancel`, `submit`, `value`. Events lists submit from the port's code with `rl_ach_lboard` |
 | `rich_presence` | Optional, memory lists: an rcheevos rich presence script, the "Playing: World 3-2" line on profiles. Ports set it from their own code with `rl_ach_presence` |
 
-Native lists only need `format`, `game`, `source` and `console`. RecompLauncher reads the names,
+PS3 native lists list each trophy with its `id` (the trophy id), `title`, `description` and `points`,
+since trophies have no gamerscore to convert. Leave out the platinum trophy (id 0): finishing the list
+earns Mastered. The runtime reports trophy unlocks as `native` messages with the trophy id.
+
+Xbox 360 native lists only need `format`, `game`, `source` and `console`. RecompLauncher reads the names,
 descriptions and gamerscore from the player's own copy of the game, and leaves out achievements that
 need online play so Mastered can be reached offline. A runtime that already reads them can send them
 with `native_list` too.
